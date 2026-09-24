@@ -1,0 +1,10 @@
+{
+  "name": "pilot_test",
+  "split": "held_out_test",
+  "n": 50,
+  "m": 100,
+  "per_kind": 3,
+  "seed_start": 3000,
+  "kinds": ["random", "sparse", "dense", "high_overlap", "low_overlap"],
+  "opt_time_limit_seconds": 20
+}

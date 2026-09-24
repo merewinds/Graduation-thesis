@@ -24,14 +24,17 @@ def generate(kind: str, n: int, m: int, seed: int) -> SetCoverInstance:
     rng = random.Random(seed)
     sets: list[set[int]] = [set() for _ in range(m)]
     if kind == "low_overlap":
-        for e in range(n):
-            sets[e % m].add(e)
-        for e in range(n):
-            if m > 1 and rng.random() < 0.10:
-                j = rng.randrange(m - 1)
-                if j >= e % m:
-                    j += 1
-                sets[j].add(e)
+        # Sets draw from separate blocks of elements. Multiple sets per block
+        # avoid the near-singleton degeneration when m is larger than n.
+        block_count = min(m, max(2, n // 5)) if n else 0
+        elements = list(range(n))
+        rng.shuffle(elements)
+        blocks = [set() for _ in range(block_count)]
+        for position, e in enumerate(elements):
+            blocks[position % block_count].add(e)
+        if block_count:
+            for j, subset in enumerate(sets):
+                subset.update(e for e in blocks[j % block_count] if rng.random() < 0.7)
     elif kind == "high_overlap":
         common = {e for e in range(n) if rng.random() < 0.55}
         for subset in sets:

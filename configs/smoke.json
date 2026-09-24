@@ -1,0 +1,10 @@
+{
+  "name": "smoke",
+  "split": "smoke",
+  "n": 30,
+  "m": 50,
+  "per_kind": 2,
+  "seed_start": 42,
+  "kinds": ["random", "sparse", "dense", "high_overlap", "low_overlap"],
+  "opt_time_limit_seconds": 20
+}
