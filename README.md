@@ -4,6 +4,8 @@ A small, reproducible environment for **unweighted Set Cover**. This is the
 experimental foundation for later scoring function search and counterexample
 feedback; it does not call an LLM.
 
+Project milestones and upcoming decisions are tracked in [PROGRESS.md](PROGRESS.md).
+
 ## Setup
 
 Requires Python 3.10+. From this directory:
