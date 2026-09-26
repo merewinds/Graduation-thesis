@@ -83,8 +83,21 @@ def test_generator_reproducible_and_feasible(kind):
 def test_exact_matches_enumeration_on_small_random_instances():
     for kind in KINDS:
         for seed in range(4):
-            instance = generate(kind, 7, 8, seed)
+            instance = generate(kind, 8, 8, seed) if kind == "greedy_trap" else generate(kind, 7, 8, seed)
             assert solve_exact(instance).objective == brute_force_opt(instance)
+
+
+def test_greedy_trap_has_known_gap():
+    instance = generate("greedy_trap", 48, 96, 42)
+    assert validate_solution(instance, greedy(instance))
+    assert len(greedy(instance)) == 18
+    assert solve_exact(instance).objective == 12
+    assert evaluate(instance, greedy).ratio == 1.5
+
+
+def test_greedy_trap_rejects_insufficient_size():
+    with pytest.raises(ValueError, match="requires n >= 8"):
+        generate("greedy_trap", 7, 10, 1)
 
 
 def test_invalid_candidate_is_reported_without_ratio():

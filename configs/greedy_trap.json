@@ -1,0 +1,10 @@
+{
+  "name": "greedy_trap",
+  "split": "diagnostic",
+  "n": 48,
+  "m": 96,
+  "per_kind": 5,
+  "seed_start": 4000,
+  "kinds": ["greedy_trap"],
+  "opt_time_limit_seconds": 20
+}

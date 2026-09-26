@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 
-from .exact import ExactSolveError, solve_exact
+from .exact import ExactResult, ExactSolveError, solve_exact
 from .instance import SetCoverInstance, validate_solution
 
 Algorithm = Callable[[SetCoverInstance], Iterable[int]]
@@ -18,6 +18,7 @@ class Evaluation:
     runtime_seconds: float
     opt_runtime_seconds: float
     opt_status: str
+    opt_source: str
     valid: bool
     solution: tuple[int, ...]
     opt_solution: tuple[int, ...]
@@ -32,7 +33,8 @@ class Evaluation:
 
 
 def evaluate(instance: SetCoverInstance, algorithm: Algorithm,
-             opt_time_limit: float | None = None) -> Evaluation:
+             opt_time_limit: float | None = None,
+             optimum: ExactResult | None = None) -> Evaluation:
     """Measure algorithm and OPT time separately.
 
     Invalid candidates remain visible in results, with no reported ratio.
@@ -52,16 +54,23 @@ def evaluate(instance: SetCoverInstance, algorithm: Algorithm,
         valid = False
         error = f"{type(exc).__name__}: {exc}"
     alg = len(solution) if valid else None
-    opt_started = time.perf_counter()
-    try:
-        optimum = solve_exact(instance, time_limit=opt_time_limit)
-        opt_status = "optimal"
-        opt_error = None
-    except ExactSolveError as exc:
-        optimum = None
-        opt_status = exc.status
-        opt_error = str(exc)
-    opt_elapsed = time.perf_counter() - opt_started
+    if optimum is not None:
+        if (optimum.objective != len(optimum.indices)
+                or not validate_solution(instance, optimum.indices)):
+            raise ValueError("precomputed OPT contains an invalid cover or objective")
+        opt_status, opt_error, opt_elapsed, opt_source = "optimal", None, 0.0, "cache"
+    else:
+        opt_started = time.perf_counter()
+        try:
+            optimum = solve_exact(instance, time_limit=opt_time_limit)
+            opt_status = "optimal"
+            opt_error = None
+        except ExactSolveError as exc:
+            optimum = None
+            opt_status = exc.status
+            opt_error = str(exc)
+        opt_elapsed = time.perf_counter() - opt_started
+        opt_source = "solver"
     if not valid or optimum is None:
         ratio = None
     elif optimum.objective == 0:
@@ -71,5 +80,5 @@ def evaluate(instance: SetCoverInstance, algorithm: Algorithm,
     else:
         ratio = alg / optimum.objective
     return Evaluation(alg, optimum.objective if optimum else None, ratio,
-                      elapsed, opt_elapsed, opt_status, valid, solution,
+                      elapsed, opt_elapsed, opt_status, opt_source, valid, solution,
                       optimum.indices if optimum else (), error, opt_error)

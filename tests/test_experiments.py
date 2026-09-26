@@ -7,6 +7,7 @@ import pytest
 
 import setcover.exact as exact_module
 from experiments.config import BenchmarkConfig
+from experiments.opt_cache import OptimumCache
 from experiments.run_benchmark import percentile_nearest_rank, run
 from setcover.algorithms import greedy
 from setcover.evaluation import evaluate
@@ -69,6 +70,7 @@ def test_benchmark_result_is_json_and_counts_are_consistent():
     assert data["summary"]["valid_solutions"] == 5
     assert data["summary"]["opt_proven"] == 5
     assert all("instance_stats" in record for record in data["records"])
+    assert data["summary"]["by_kind"]["random"]["count"] == 1
 
 
 def test_benchmark_continues_when_opt_is_unproven(monkeypatch):
@@ -89,3 +91,32 @@ def test_benchmark_continues_when_opt_is_unproven(monkeypatch):
 def test_nearest_rank_percentile():
     assert percentile_nearest_rank([1.0, 1.5, 2.0], 0.9) == 2.0
     assert percentile_nearest_rank([], 0.9) is None
+
+
+def test_opt_cache_skips_second_exact_solve(tmp_path, monkeypatch):
+    config = replace(BenchmarkConfig.load(CONFIGS / "smoke.json"),
+                     n=8, m=12, per_kind=1, kinds=("random",))
+    path = tmp_path / "opt_cache.json"
+    first = run(config, OptimumCache(path))
+    assert first["summary"]["opt_cache_hits"] == 0
+    assert path.exists()
+
+    def unexpected_solve(*args, **kwargs):
+        raise AssertionError("exact solver should not run on a cache hit")
+
+    monkeypatch.setattr("setcover.evaluation.solve_exact", unexpected_solve)
+    second = run(config, OptimumCache(path))
+    assert second["summary"]["opt_cache_hits"] == 1
+    assert second["summary"]["mean_ratio"] == first["summary"]["mean_ratio"]
+
+
+def test_unproven_opt_is_not_cached(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        exact_module, "milp",
+        lambda **kwargs: SimpleNamespace(status=1, x=None, message="Time limit reached"),
+    )
+    config = replace(BenchmarkConfig.load(CONFIGS / "smoke.json"),
+                     n=4, m=6, per_kind=1, kinds=("random",))
+    cache = OptimumCache(tmp_path / "opt_cache.json")
+    run(config, cache)
+    assert cache.entries == {}
